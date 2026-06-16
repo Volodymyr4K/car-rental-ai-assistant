@@ -58,7 +58,10 @@ def _tokenize(s: str) -> set[str]:
 def _model_keys(model: str) -> set[str]:
     """Distinctive Latin tokens of a model name (brand/model, not generic trim)."""
     toks = {t for t in re.findall(r"[a-z0-9]+", model.lower()) if len(t) >= 2}
-    keys = {t for t in toks if t not in _GENERIC and len(t) >= 3}
+    # keep distinctive tokens: alpha words (len>=3) AND short model codes with a
+    # digit (x5, q5, a4, t5) — those disambiguate trims like Audi A4 vs Q5.
+    keys = {t for t in toks
+            if t not in _GENERIC and (len(t) >= 3 or any(c.isdigit() for c in t))}
     return keys or toks  # fall back to all tokens if everything was generic
 
 
