@@ -1,0 +1,32 @@
+# secrets — never commit
+.env
+*.key
+
+# real conversation logs (ML dataset with real user data) — keep private
+data/conversations.jsonl
+# per-conversation takeover state (runtime)
+data/modes.json
+data/topics.json
+data/cards.json
+
+# internal working files — not for the public repo
+CLAUDE.md
+
+# gstack runtime state (contains tokens!) — never commit
+.gstack/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# logs
+*.log
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

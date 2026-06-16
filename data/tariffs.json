@@ -1,0 +1,381 @@
+{
+  "_source": "Illustrative sample data for a fictional company (AutoRent). Not real pricing.",
+  "duration_brackets": [
+    "1-3",
+    "4-9",
+    "10-25",
+    "26-89"
+  ],
+  "classes": {
+    "Економ": [
+      {
+        "model": "Renault Logan II",
+        "prices": [
+          35,
+          30,
+          25,
+          20
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Hyundai Accent IV AT",
+        "prices": [
+          35,
+          35,
+          25,
+          25
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Citroën C-Elysée",
+        "prices": [
+          40,
+          35,
+          30,
+          25
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Ford Fiesta VI",
+        "prices": [
+          40,
+          35,
+          30,
+          25
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Peugeot 301",
+        "prices": [
+          40,
+          35,
+          30,
+          25
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Seat Ibiza NEW",
+        "prices": [
+          40,
+          35,
+          30,
+          25
+        ],
+        "deposit": 200
+      }
+    ],
+    "Середній": [
+      {
+        "model": "Volkswagen Polo Sedan",
+        "prices": [
+          40,
+          35,
+          30,
+          25
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Hyundai Elantra",
+        "prices": [
+          40,
+          35,
+          30,
+          25
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Toyota Corolla 2018",
+        "prices": [
+          40,
+          35,
+          30,
+          25
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Honda Civic hatchback X",
+        "prices": [
+          50,
+          45,
+          40,
+          30
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Hyundai Elantra 2021",
+        "prices": [
+          50,
+          45,
+          40,
+          30
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Mazda 3 Sedan",
+        "prices": [
+          50,
+          45,
+          40,
+          30
+        ],
+        "deposit": 200
+      },
+      {
+        "model": "Skoda Octavia A8",
+        "prices": [
+          50,
+          45,
+          40,
+          30
+        ],
+        "deposit": 300
+      },
+      {
+        "model": "Toyota Corolla NEW",
+        "prices": [
+          50,
+          45,
+          40,
+          30
+        ],
+        "deposit": 300
+      },
+      {
+        "model": "VW Golf VII",
+        "prices": [
+          50,
+          45,
+          40,
+          30
+        ],
+        "deposit": 300
+      },
+      {
+        "model": "VW JETTA VII",
+        "prices": [
+          50,
+          45,
+          40,
+          30
+        ],
+        "deposit": 300
+      }
+    ],
+    "Бізнес": [
+      {
+        "model": "Honda Accord X",
+        "prices": [
+          50,
+          45,
+          40,
+          35
+        ],
+        "deposit": 300
+      },
+      {
+        "model": "Infiniti Q50",
+        "prices": [
+          50,
+          45,
+          40,
+          35
+        ],
+        "deposit": 300
+      },
+      {
+        "model": "Mazda 6 NEW",
+        "prices": [
+          50,
+          45,
+          40,
+          35
+        ],
+        "deposit": 300
+      },
+      {
+        "model": "Toyota Camry VX70",
+        "prices": [
+          55,
+          50,
+          45,
+          35
+        ],
+        "deposit": 300
+      },
+      {
+        "model": "Audi A4 B9",
+        "prices": [
+          70,
+          60,
+          55,
+          45
+        ],
+        "deposit": 400
+      },
+      {
+        "model": "Mercedes C300 4matic",
+        "prices": [
+          70,
+          60,
+          55,
+          50
+        ],
+        "deposit": 500
+      },
+      {
+        "model": "Toyota Camry HYBRID (XV70)",
+        "prices": [
+          70,
+          60,
+          55,
+          45
+        ],
+        "deposit": 500
+      },
+      {
+        "model": "Toyota Camry HYBRID (XV80)",
+        "prices": [
+          75,
+          65,
+          60,
+          50
+        ],
+        "deposit": 600
+      },
+      {
+        "model": "BMW 320 (G-20)",
+        "prices": [
+          85,
+          75,
+          65,
+          60
+        ],
+        "deposit": 600
+      }
+    ],
+    "Преміум": [
+      {
+        "model": "BMW 530 Hybrid 2019",
+        "prices": [
+          80,
+          75,
+          65,
+          55
+        ],
+        "deposit": 900
+      },
+      {
+        "model": "Lexus ES Hybrid",
+        "prices": [
+          80,
+          75,
+          65,
+          55
+        ],
+        "deposit": 700
+      },
+      {
+        "model": "Mercedes E350 4Matic",
+        "prices": [
+          100,
+          90,
+          80,
+          70
+        ],
+        "deposit": 1200
+      },
+      {
+        "model": "Toyota Land Cruiser 200",
+        "prices": [
+          120,
+          110,
+          95,
+          85
+        ],
+        "deposit": 1800
+      },
+      {
+        "model": "BMW 520 2025",
+        "prices": [
+          125,
+          115,
+          100,
+          90
+        ],
+        "deposit": 1800
+      },
+      {
+        "model": "BMW X5 G05",
+        "prices": [
+          130,
+          115,
+          105,
+          85
+        ],
+        "deposit": 1600
+      },
+      {
+        "model": "Mercedes Benz GLE 300 2021",
+        "prices": [
+          140,
+          125,
+          110,
+          95
+        ],
+        "deposit": 1600
+      },
+      {
+        "model": "VW Touareg R-line 2024",
+        "prices": [
+          145,
+          130,
+          115,
+          100
+        ],
+        "deposit": 1800
+      },
+      {
+        "model": "BMW X5 2026",
+        "prices": [
+          225,
+          200,
+          180,
+          155
+        ],
+        "deposit": 2000
+      },
+      {
+        "model": "Mercedes G55 AMG",
+        "prices": [
+          245,
+          220,
+          195,
+          170
+        ],
+        "deposit": 2000
+      }
+    ],
+    "Позашляховик": [
+      {
+        "model": "Renault Duster NEW",
+        "prices": [
+          35,
+          35,
+          30,
+          25
+        ],
+        "deposit": null
+      }
+    ]
+  }
+}

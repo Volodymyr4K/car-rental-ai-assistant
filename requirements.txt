@@ -1,0 +1,2 @@
+# Telegram bot framework (async). LLM calls use urllib (no extra dep).
+python-telegram-bot==21.6
