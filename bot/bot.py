@@ -38,7 +38,7 @@ from .store import Turn, effectiveness, log_turn, set_latest_feedback
 # operator shortcuts that label the lead (ML ground truth) in addition to a note
 _FEEDBACK = {"booked": "booked", "забронював": "booked", "купив": "booked",
              "lost": "lost", "злився": "lost", "відмова": "lost", "відмовився": "lost",
-             "wrong": "wrong_answer", "невірно": "wrong_answer", "помилка": "wrong_answer"}
+             "wrong": "wrong_answer", "невірно": "wrong_answer", "неправильно": "wrong_answer", "помилка": "wrong_answer"}
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("bot")
