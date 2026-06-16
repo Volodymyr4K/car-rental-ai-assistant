@@ -29,7 +29,7 @@ from telegram.ext import (
 
 from . import config, ops_state
 from .booking import Booking, BookingFlow
-from .dispatch import dispatch
+from .dispatch import Decision, dispatch
 from .intent import Router, accident_reply, handoff_reasons, is_accident
 from .llm import answer as llm_answer
 from .pricing import PriceBook
@@ -197,13 +197,104 @@ async def _alert(context: ContextTypes.DEFAULT_TYPE, reason: str,
 
 _WELCOME = (
     f"Вітаю! Я асистент {config.COMPANY_NAME} 🚗\n"
-    "Питайте про ціну, умови, документи чи бронювання — відповім миттєво, "
-    "24/7. Напр.: «скільки коштує Camry на 5 днів?»"
+    "Оберіть дію кнопкою — або просто напишіть питання (ціна, умови, документи). "
+    "Відповім миттєво, 24/7. Напр.: «скільки коштує Camry на 5 днів?»"
 )
 
 
+def _menu_kb() -> InlineKeyboardMarkup:
+    """Customer main menu — buttons for the 80% happy path (typing still works).
+    Goal: deflect the common asks (rent / FAQ / extend) off the manager."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🚗 Орендувати авто", callback_data="cust:rent")],
+        [InlineKeyboardButton("❓ Часті питання", callback_data="cust:faq")],
+        [InlineKeyboardButton("🔄 Продовжити оренду", callback_data="cust:extend")],
+        [InlineKeyboardButton("💬 Звʼязатися з менеджером", callback_data="cust:manager")],
+    ])
+
+
+# short button labels per FAQ id (data stays the source of truth; unknown ids
+# fall back to a trimmed question, so a new faq.json entry still gets a button).
+_FAQ_LABELS = {
+    "deposit": "💰 Застава", "documents": "📄 Документи", "mileage": "🛣 Пробіг",
+    "insurance": "🛡 Страхування", "payment": "💳 Оплата", "abroad": "🌍 За кордон",
+    "age": "🪪 Вік і стаж", "wedding": "💒 На весілля", "damage": "⚠️ Пошкодження",
+    "multiple_drivers": "👥 Кілька водіїв", "delivery": "🚙 Доставка",
+    "extras": "➕ Опції", "whats_included": "✅ Що включено", "cities": "📍 Міста",
+}
+
+
+def _faq_entry(faq_id: str):
+    return next((e for e in router.faq.entries if e.id == faq_id), None)
+
+
+def _faq_kb() -> InlineKeyboardMarkup:
+    rows, row = [], []
+    for e in router.faq.entries:
+        label = _FAQ_LABELS.get(e.id, e.question[:20])
+        row.append(InlineKeyboardButton(label, callback_data=f"cust:faq:{e.id}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([InlineKeyboardButton("⬅️ Назад", callback_data="cust:menu")])
+    return InlineKeyboardMarkup(rows)
+
+
+def _class_names() -> list:
+    """Distinct car classes in fleet order — keyboard never drifts from the data."""
+    seen = []
+    for c in _prices.cars:
+        if c.car_class not in seen:
+            seen.append(c.car_class)
+    return seen
+
+
+def _class_kb() -> InlineKeyboardMarkup:
+    rows, row = [], []
+    for name in _class_names():
+        row.append(InlineKeyboardButton(name, callback_data=f"cust:class:{name}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([InlineKeyboardButton("⬅️ Назад", callback_data="cust:menu")])
+    return InlineKeyboardMarkup(rows)
+
+
+def _model_kb(options: list) -> InlineKeyboardMarkup:
+    """Buttons for the pending car choices in a booking (2 per row) + escape."""
+    rows, row = [], []
+    for m in options:
+        row.append(InlineKeyboardButton(m, callback_data=f"cust:model:{m}"))
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    rows.append([InlineKeyboardButton("⬅️ Інший клас", callback_data="cust:rent")])
+    return InlineKeyboardMarkup(rows)
+
+
+def customer_cb_message(data: str):
+    """Map a customer button to the text the user would have typed, so buttons reuse
+    the exact same dispatch path (no parallel logic). None = pure-UI button (just
+    swaps the keyboard, nothing goes through the router)."""
+    parts = data.split(":", 2)            # ["cust","class","Бізнес"] | ["cust","manager"]
+    action = parts[1] if len(parts) > 1 else ""
+    if action == "class" and len(parts) == 3:
+        return f"орендувати {parts[2]}"
+    if action == "model" and len(parts) == 3:
+        return parts[2]                   # exact model name → mid-booking find_car
+    if action == "manager":
+        return "звʼязатися з менеджером"
+    return None
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(_WELCOME)
+    await update.message.reply_text(_WELCOME, reply_markup=_menu_kb())
 
 
 async def chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -326,12 +417,69 @@ async def on_mode_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await context.bot.send_message(_ops_id(), note, message_thread_id=thread_id)
 
 
+async def on_customer_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Customer inline-keyboard presses. Pure-UI buttons swap the keyboard; action
+    buttons synthesize the equivalent text and run the shared turn pipeline."""
+    q = update.callback_query
+    await q.answer()
+    cid = update.effective_chat.id
+    data = q.data or ""
+    parts = data.split(":", 2)
+    action = parts[1] if len(parts) > 1 else ""
+    if action == "rent":
+        await context.bot.send_message(cid, "Оберіть клас авто 👇", reply_markup=_class_kb())
+        return
+    if action == "menu":
+        await context.bot.send_message(cid, _WELCOME, reply_markup=_menu_kb())
+        return
+    if action == "faq" and len(parts) == 2:          # open FAQ submenu
+        await context.bot.send_message(cid, "Оберіть питання 👇", reply_markup=_faq_kb())
+        return
+    if action == "faq" and len(parts) == 3:          # answer a known FAQ directly
+        entry = _faq_entry(parts[2])
+        if entry:
+            forced = Decision(entry.answer, "faq", "rules", 1.0, None, "answered", None, None)
+            await _process_customer_turn(update, context, entry.question, forced=forced)
+        return
+    if action == "extend":
+        # extension needs the manager's internal records — bot can't self-serve it.
+        # So collect the identifiers a manager actually needs, ping them, and switch
+        # to human mode so the customer's reply lands in the operator console.
+        user = update.effective_user
+        thread_id = await _ensure_topic(context, cid, _handle(user))
+        await _ensure_card(context, cid, _handle(user), thread_id)
+        await context.bot.send_message(
+            cid,
+            "Щоб продовжити оренду, підкажіть, будь ласка:\n"
+            "• ваш номер телефону (за ним знайдемо вашу оренду)\n"
+            "• яке авто у вас зараз — модель або № договору\n"
+            "• до якого числа продовжити\n\n"
+            "Передаю менеджеру — він підтвердить наявність і ціну 🙏")
+        await _alert(context, "🔄 Клієнт хоче продовжити оренду", "", thread_id)
+        ops_state.set_mode(cid, "human")
+        ops_state.suppress_greeting(cid)
+        log_turn(Turn(user_id=str(user.id), session_id=str(cid),
+                      message="[кнопка] продовжити оренду", intent_rules="extend",
+                      answer_source="human", outcome="escalated"))
+        return
+    msg = customer_cb_message(data)
+    if msg is not None:
+        await _process_customer_turn(update, context, msg)
+
+
 async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # operators group goes to its own handler
     if _ops_id() and update.effective_chat.id == _ops_id():
         return await on_ops_message(update, context)
+    await _process_customer_turn(update, context, update.message.text or "")
 
-    msg = update.message.text or ""
+
+async def _process_customer_turn(update: Update, context: ContextTypes.DEFAULT_TYPE,
+                                 msg: str, forced: Decision = None) -> None:
+    """One customer turn — shared by typed messages AND button presses, so both
+    run the SAME side-effects (ops mirror, card, accident/handoff, dispatch, log).
+    Replies go to the chat via context.bot.send_message (no update.message needed,
+    since a CallbackQuery has no .message of the customer's own)."""
     user = update.effective_user
     cid = update.effective_chat.id
 
@@ -352,7 +500,7 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # LLM, which invents numbers), then alert managers loudly.
     if is_accident(msg):
         context.user_data.pop("booking", None)  # drop any half-finished booking
-        await update.message.reply_text(accident_reply(config.COMPANY_PHONE))
+        await context.bot.send_message(cid, accident_reply(config.COMPANY_PHONE))
         await _alert(context, "🚨 ДТП / аварія — терміново", msg, thread_id)
         ops_state.set_mode(cid, "human")
         ops_state.suppress_greeting(cid)  # no cheerful 'Вітаю!' after an accident
@@ -365,8 +513,8 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     handoff = handoff_reasons(msg)
     if handoff:
         context.user_data.pop("booking", None)  # abandon any half-finished booking
-        await update.message.reply_text(
-            "Передаю вашу розмову менеджеру — він скоро відповість 🙏")
+        await context.bot.send_message(
+            cid, "Передаю вашу розмову менеджеру — він скоро відповість 🙏")
         await _alert(context, "; ".join(handoff), msg, thread_id)
         ops_state.set_mode(cid, "human")  # bot steps back until a manager resumes
         ops_state.suppress_greeting(cid)  # complaint takeover → skip the cheerful greeting
@@ -378,12 +526,15 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # --- auto mode: unified decision (run in executor so a blocking LLM call
     #     never freezes the event loop for other customers/operators) ---
     state: Booking = context.user_data.get("booking")
-    loop = asyncio.get_running_loop()
-    d = await loop.run_in_executor(None, dispatch, msg, state, router, flow)
-    if d.booking is not None:
-        context.user_data["booking"] = d.booking
-    else:
-        context.user_data.pop("booking", None)
+    if forced is not None:
+        d = forced                       # known answer (e.g. FAQ button) — skip routing
+    else:                                #   and leave any in-progress booking intact
+        loop = asyncio.get_running_loop()
+        d = await loop.run_in_executor(None, dispatch, msg, state, router, flow)
+        if d.booking is not None:
+            context.user_data["booking"] = d.booking
+        else:
+            context.user_data.pop("booking", None)
     if d.lead is not None:
         bk = d.lead
         ops_state.update_card(
@@ -392,7 +543,9 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     text, intent, source, conf, quote, outcome = (
         d.text, d.intent, d.source, d.confidence, d.quote, d.outcome)
 
-    await update.message.reply_text(text)
+    # if the booking is waiting on a car choice, offer those models as buttons
+    markup = _model_kb(d.booking.options) if (d.booking and d.booking.options) else None
+    await context.bot.send_message(cid, text, reply_markup=markup)
     log_turn(Turn(
         user_id=str(user.id), session_id=str(cid), message=msg,
         intent_rules=intent, intent_confidence=conf,
@@ -426,9 +579,10 @@ def main() -> None:
     app.add_handler(CommandHandler("whoami", whoami))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CallbackQueryHandler(on_mode_button, pattern=r"^mode:"))
+    app.add_handler(CallbackQueryHandler(on_customer_button, pattern=r"^cust:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
     mode = "rules+LLM" if config.LLM_ENABLED else "rules-only"
-    log.info("Bot running (%s). Ctrl+C to stop.", mode)
+    log.info("%s bot running (%s). Ctrl+C to stop.", config.COMPANY_NAME, mode)
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
