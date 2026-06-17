@@ -38,8 +38,8 @@ def test_handoff_reasons():
 
 
 def test_accident_reply_contains_real_phone():
-    r = accident_reply("+38 067 515 5116")
-    assert "+38 067 515 5116" in r and "112" in r
+    r = accident_reply("+38 000 000 0000")
+    assert "+38 000 000 0000" in r and "112" in r
 
 
 def test_booking_escape_hatch():
